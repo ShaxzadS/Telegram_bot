@@ -24,10 +24,18 @@ public class TelegramBot extends TelegramLongPollingBot {
             String message = update.getMessage().getText();
             long chatId = update.getMessage().getChatId();
 
+            String userName = update.getMessage().getChat().getUserName();
+            String firstName = update.getMessage().getChat().getFirstName();
+            String lastName = update.getMessage().getChat().getLastName();
+
+            String sender = (userName != null) ? "@" + userName : (firstName + " " + (lastName != null ? lastName : "")).trim();
+
+            log.info("Received message from {} (chatId={}): {}", sender, chatId, message);
+
             if ("/start".equals(message)) {
-                startCommandReceived(chatId, update.getMessage().getChat().getFirstName());
+                startCommandReceived(chatId, firstName);
             } else {
-                sendMessage(chatId, message);
+                sendMessage(chatId, message); // Эхо-сообщение
             }
         }
     }
