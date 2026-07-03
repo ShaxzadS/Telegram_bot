@@ -13,7 +13,6 @@ public class BotConfig {
     @Value("${bot.key}")
     private String token;
 
-
     public String getBotName() {
         return botName;
     }
