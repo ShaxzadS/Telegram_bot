@@ -30,4 +30,7 @@ jobs:
               --restart unless-stopped \
               -e BOT_NAME="${{ secrets.BOT_NAME }}" \
               -e BOT_KEY="${{ secrets.BOT_KEY }}" \
+              -e SPRING_DATASOURCE_URL="${{ secrets.SPRING_DATASOURCE_URL }}" \
+              -e SPRING_DATASOURCE_USERNAME="${{ secrets.SPRING_DATASOURCE_USERNAME }}" \
+              -e SPRING_DATASOURCE_PASSWORD="${{ secrets.SPRING_DATASOURCE_PASSWORD }}" \
               shaxzadbot

@@ -1,86 +1,38 @@
 package Bot.ShaxzadBot.service;
 
 import Bot.ShaxzadBot.config.BotConfig;
+import Bot.ShaxzadBot.entity.Atm;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.objects.Contact;
+import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboard;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardRemove;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardButton;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
 
-import jakarta.annotation.PostConstruct;
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 @Component
 public class TelegramBot extends TelegramLongPollingBot {
-    private final PprService pprService;
-    private static final Logger logger =
-            LoggerFactory.getLogger(TelegramBot.class);
+    private static final Logger logger = LoggerFactory.getLogger(TelegramBot.class);
 
     private final BotConfig config;
+    private final PprService pprService;
+    private final AtmService atmService;
+    private final TelegramUserService telegramUserService;
 
-    //private final Map<String, String> atmDatabase = new HashMap<>();
-    private final Map<String, String[]> atmDatabase = new HashMap<>();
-
-    public TelegramBot(BotConfig config, PprService pprService) {
+    public TelegramBot(BotConfig config, PprService pprService, AtmService atmService,
+                       TelegramUserService telegramUserService) {
         this.config = config;
         this.pprService = pprService;
-    }
-
-    // 🔥 Загружаем CSV при старте
-    @PostConstruct
-    public void loadAtmData() {
-
-        try (BufferedReader reader = new BufferedReader(
-                new InputStreamReader(
-                        getClass().getClassLoader()
-                                .getResourceAsStream("atm_data.csv"),
-                        StandardCharsets.UTF_8))) {
-
-            String line;
-            int lineNumber = 0;
-
-            while ((line = reader.readLine()) != null) {
-                lineNumber++;
-
-                String[] columns = line.split(";", -1);
-
-                if (columns.length < 5) {
-                    logger.warn("Skipping invalid ATM CSV row {}: expected 5 columns, got {}", lineNumber, columns.length);
-                    continue;
-                }
-
-                String number = columns[0].trim();
-                if (!number.matches("\\d+")) {
-                    logger.warn("Skipping invalid ATM CSV row {}: ATM number is not numeric", lineNumber);
-                    continue;
-                }
-
-                String model = columns[1].trim();
-                String org = columns[2].trim();
-                String address = columns[3].trim();
-                String sector = columns[4].trim();
-
-                String fullInfo =
-                        "🏧 №АТМ: " + number + "\n" +
-                                "📟 Модель: " + model + "\n" +
-                                "🏢 Организация: " + org + "\n" +
-                                "📍 Адрес: " + address + "\n" +
-                                "🗂 " + sector;
-
-                atmDatabase.put(number, new String[]{model, fullInfo});
-            }
-
-            logger.info("Loaded ATM count: {}", atmDatabase.size());
-
-        } catch (Exception e) {
-            logger.error("CSV load error", e);
-        }
+        this.atmService = atmService;
+        this.telegramUserService = telegramUserService;
     }
 
     @Override
@@ -95,48 +47,126 @@ public class TelegramBot extends TelegramLongPollingBot {
 
     @Override
     public void onUpdateReceived(Update update) {
+        if (!update.hasMessage()) {
+            return;
+        }
 
-        if (update.hasMessage() && update.getMessage().hasText()) {
+        Message message = update.getMessage();
+        if (message.hasContact()) {
+            handleContact(message);
+            return;
+        }
 
-            String chatId = update.getMessage().getChatId().toString();
-            String text = update.getMessage().getText().trim();
+        if (!message.hasText()) {
+            return;
+        }
 
-            String response;
+        String text = message.getText().trim();
+        Long chatId = message.getChatId();
+        Long senderId = message.getFrom() != null ? message.getFrom().getId() : null;
 
-            if (text.matches("\\d+")) {
+        if ("/start".equalsIgnoreCase(text)) {
+            handleStart(chatId, senderId);
+            return;
+        }
 
-                if (atmDatabase.containsKey(text)) {
+        if (senderId == null || !telegramUserService.isRegistered(senderId)) {
+            sendText(chatId, "Please press /start and share your contact first.", buildContactKeyboard());
+            return;
+        }
 
-                    String model = atmDatabase.get(text)[0];
-                    String info = atmDatabase.get(text)[1];
+        if (!text.matches("\\d+")) {
+            sendText(chatId, "Send the ATM number using digits only.");
+            return;
+        }
 
-                    List<String> kit = pprService.getKitByModel(model);
+        String response = atmService.findByNumber(text)
+                .map(this::buildAtmResponse)
+                .orElse("ATM with this code was not found");
 
-                    StringBuilder pprText = new StringBuilder("\n\n🧰 Комплект для ППР:\n\n");
+        sendText(chatId, response);
+    }
 
-                    for (String item : kit) {
-                        pprText.append(item).append("\n");
-                    }
+    public void sendBroadcast(Long chatId, String response) {
+        sendText(chatId, response);
+    }
 
-                    response = info + pprText.toString();
+    private void handleStart(Long chatId, Long senderId) {
+        if (senderId != null && telegramUserService.isRegistered(senderId)) {
+            sendText(chatId, "You are already registered. Send the ATM number.", new ReplyKeyboardRemove(true));
+            return;
+        }
 
-                } else {
-                    response = "❌ ATM с таким кодом не найден";
-                }
+        sendText(chatId, "Press the button below and share your contact.", buildContactKeyboard());
+    }
 
-            } else {
-                response = "Введите код ATM (только цифры)";
-            }
+    private void handleContact(Message message) {
+        Long chatId = message.getChatId();
+        Long senderId = message.getFrom() != null ? message.getFrom().getId() : null;
+        Contact contact = message.getContact();
 
-            SendMessage message = new SendMessage();
-            message.setChatId(chatId);
-            message.setText(response);
+        if (senderId == null) {
+            sendText(chatId, "Could not identify the user. Please press /start again.");
+            return;
+        }
 
-            try {
-                execute(message);
-            } catch (Exception e) {
-                logger.error("Ошибка отправки", e);
-            }
+        if (contact.getUserId() != null && !contact.getUserId().equals(senderId)) {
+            sendText(chatId, "Share your own contact using the button.", buildContactKeyboard());
+            return;
+        }
+
+        telegramUserService.registerFromContact(message);
+        sendText(chatId, "Registration completed. Now send the ATM number.", new ReplyKeyboardRemove(true));
+    }
+
+    private String buildAtmResponse(Atm atm) {
+        List<String> kit = pprService.getKitByModel(atm.getModel());
+
+        StringBuilder kitText = new StringBuilder("\n\nPPR kit:\n");
+        for (String item : kit) {
+            kitText.append("- ").append(item).append("\n");
+        }
+
+        return "ATM: " + atm.getNumber() + "\n" +
+                "Model: " + atm.getModel() + "\n" +
+                "Organization: " + atm.getOrganization() + "\n" +
+                "Address: " + atm.getAddress() + "\n" +
+                "Sector: " + atm.getSector() +
+                kitText;
+    }
+
+    private ReplyKeyboardMarkup buildContactKeyboard() {
+        KeyboardButton button = new KeyboardButton();
+        button.setText("Share contact");
+        button.setRequestContact(true);
+
+        KeyboardRow row = new KeyboardRow();
+        row.add(button);
+
+        ReplyKeyboardMarkup markup = new ReplyKeyboardMarkup();
+        markup.setKeyboard(List.of(row));
+        markup.setResizeKeyboard(true);
+        markup.setOneTimeKeyboard(true);
+        markup.setSelective(true);
+        return markup;
+    }
+
+    private void sendText(Long chatId, String response) {
+        sendText(chatId, response, null);
+    }
+
+    private void sendText(Long chatId, String response, ReplyKeyboard replyKeyboard) {
+        SendMessage message = new SendMessage();
+        message.setChatId(chatId.toString());
+        message.setText(response);
+        if (replyKeyboard != null) {
+            message.setReplyMarkup(replyKeyboard);
+        }
+
+        try {
+            execute(message);
+        } catch (Exception e) {
+            logger.error("Error sending message", e);
         }
     }
 }

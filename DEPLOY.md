@@ -25,6 +25,11 @@ $env:BOT_KEY="your_telegram_bot_token"
 .\mvnw.cmd spring-boot:run
 ```
 
+By default the app connects to `jdbc:postgresql://localhost:5432/ATMDatabase`
+with `postgres` / `2231`. Override `SPRING_DATASOURCE_URL`,
+`SPRING_DATASOURCE_USERNAME`, and `SPRING_DATASOURCE_PASSWORD` if your database
+is elsewhere.
+
 View logs:
 
 ```bash
