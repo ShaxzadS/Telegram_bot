@@ -14,19 +14,31 @@ public class PprService {
 
     public PprService() {
         List<String> baseKit = List.of(
-                "Key",
-                "Master key",
-                "Tools",
-                "Special tools",
-                "Blower",
-                "Flash drive",
-                "Consumables"
+                "🔑 Ключ",
+                "🔐 Мастер-ключ",
+                "🧰 Инструменты",
+                "🛠️ Специнструменты",
+                "💨 Пыледув",
+                "💾 Флешка",
+                "📦 Расходники"
         );
 
-        pprKit.put("NCR-6634 cash-in", addExtra(baseKit, "Cassettes", "Banknotes"));
-        pprKit.put("Diebold Nixdorf C4060", addExtra(baseKit, "Diebold service key"));
-        pprKit.put("GRG H68VL", addExtra(baseKit, "GRG key"));
-        pprKit.put("APP-2", addExtra(baseKit, "APP technical key"));
+        pprKit.put("NCR-6634 cash-in",
+                addExtra(baseKit,
+                        "💵 Кассеты",
+                        "💰 Банкноты"));
+
+        pprKit.put("Diebold Nixdorf C4060",
+                addExtra(baseKit,
+                        "🗝️ Сервисный ключ Diebold"));
+
+        pprKit.put("GRG H68VL",
+                addExtra(baseKit,
+                        "🗝️ Ключ GRG"));
+
+        pprKit.put("APP-2",
+                addExtra(baseKit,
+                        "🗝️ Технический ключ APP"));
     }
 
     private List<String> addExtra(List<String> base, String... extras) {
@@ -36,6 +48,7 @@ public class PprService {
     }
 
     public List<String> getKitByModel(String model) {
-        return pprKit.getOrDefault(model, List.of("No PPR data for this model"));
+        return pprKit.getOrDefault(model,
+                List.of("❌ Для данной модели комплект ППР не найден."));
     }
 }

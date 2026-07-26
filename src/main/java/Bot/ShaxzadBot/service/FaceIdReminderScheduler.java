@@ -13,7 +13,6 @@ import java.util.List;
 public class FaceIdReminderScheduler {
 
     private static final Logger logger = LoggerFactory.getLogger(FaceIdReminderScheduler.class);
-    private static final String REMINDER_TEXT = "Не забудьте пройти Face ID.";
     private static final String TIME_ZONE = "Asia/Qyzylorda";
 
     private final TelegramUserRepository telegramUserRepository;
@@ -29,7 +28,7 @@ public class FaceIdReminderScheduler {
         sendReminder("08:55");
     }
 
-    @Scheduled(cron = "0 33 21 * * *", zone = TIME_ZONE)
+    @Scheduled(cron = "0 5 18 * * *", zone = TIME_ZONE)
     public void sendEveningReminder() {
         sendReminder("18:05");
     }
@@ -48,8 +47,10 @@ public class FaceIdReminderScheduler {
                 continue;
             }
 
+            String reminderText = "👋 " + user.getFirstName() + ", не забудь пройти Face ID 😊";
+
             try {
-                telegramBot.sendBroadcast(chatId, REMINDER_TEXT);
+                telegramBot.sendBroadcast(chatId, reminderText);
                 sentCount++;
             } catch (Exception e) {
                 logger.error("Failed to send {} reminder to chat {}", scheduleLabel, chatId, e);

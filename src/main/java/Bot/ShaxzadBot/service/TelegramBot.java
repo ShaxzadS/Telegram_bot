@@ -74,18 +74,18 @@ public class TelegramBot extends TelegramLongPollingBot {
             }
 
             if (senderId == null || !telegramUserService.isRegistered(senderId)) {
-                sendText(chatId, "Please press /start and share your contact first.", buildContactKeyboard());
+                sendText(chatId, "Пожалуйста, нажмите /start и сначала поделитесь своими контактными данными.", buildContactKeyboard());
                 return;
             }
 
             if (!text.matches("\\d+")) {
-                sendText(chatId, "Send the ATM number using digits only.");
+                sendText(chatId, "Отправьте номер АТМ, используя только цифры.");
                 return;
             }
 
             String response = atmService.findByNumber(text)
                     .map(this::buildAtmResponse)
-                    .orElse("ATM with this code was not found");
+                    .orElse("АТМ с этим кодом не найден.");
 
             sendText(chatId, response);
         } catch (Exception e) {
@@ -99,11 +99,11 @@ public class TelegramBot extends TelegramLongPollingBot {
 
     private void handleStart(Long chatId, Long senderId) {
         if (senderId != null && telegramUserService.isRegistered(senderId)) {
-            sendText(chatId, "You are already registered. Send the ATM number.", new ReplyKeyboardRemove(true));
+            sendText(chatId, "Вы уже зарегистрированы. Отправьте номер АТМ.", new ReplyKeyboardRemove(true));
             return;
         }
 
-        sendText(chatId, "Press the button below and share your contact.", buildContactKeyboard());
+        sendText(chatId, "Нажмите кнопку ниже и поделитесь своими контактными данными.", buildContactKeyboard());
     }
 
     private void handleContact(Message message) {
@@ -112,17 +112,17 @@ public class TelegramBot extends TelegramLongPollingBot {
         Contact contact = message.getContact();
 
         if (senderId == null) {
-            sendText(chatId, "Could not identify the user. Please press /start again.");
+            sendText(chatId, "Не удалось определить пользователя. Пожалуйста, снова нажмите /start.");
             return;
         }
 
         if (contact.getUserId() != null && !contact.getUserId().equals(senderId)) {
-            sendText(chatId, "Share your own contact using the button.", buildContactKeyboard());
+            sendText(chatId, "Поделитесь своими контактными данными с помощью кнопки.", buildContactKeyboard());
             return;
         }
 
         telegramUserService.registerFromContact(message);
-        sendText(chatId, "Registration completed. Now send the ATM number.", new ReplyKeyboardRemove(true));
+        sendText(chatId, "Регистрация завершена. Теперь отправьте номер АТМ.", new ReplyKeyboardRemove(true));
     }
 
     private String buildAtmResponse(Atm atm) {
@@ -133,17 +133,17 @@ public class TelegramBot extends TelegramLongPollingBot {
             kitText.append("- ").append(item).append("\n");
         }
 
-        return "ATM: " + atm.getNumber() + "\n" +
-                "Model: " + atm.getModel() + "\n" +
-                "Organization: " + atm.getOrganization() + "\n" +
-                "Address: " + atm.getAddress() + "\n" +
-                "Sector: " + atm.getSector() +
+        return "🏧 №ATM: " + atm.getNumber() + "\n" +
+                "🖥️ Модель: " + atm.getModel() + "\n" +
+                "🏢 Организация: " + atm.getOrganization() + "\n" +
+                "📍 Адрес: " + atm.getAddress() + "\n" +
+                "🗂️ Сектор: " + atm.getSector() +
                 kitText;
     }
 
     private ReplyKeyboardMarkup buildContactKeyboard() {
         KeyboardButton button = new KeyboardButton();
-        button.setText("Share contact");
+        button.setText("Поделись с контактом");
         button.setRequestContact(true);
 
         KeyboardRow row = new KeyboardRow();
@@ -172,7 +172,7 @@ public class TelegramBot extends TelegramLongPollingBot {
         try {
             execute(message);
         } catch (Exception e) {
-            logger.error("Error sending message", e);
+            logger.error("Ошибка при отправке сообщения", e);
         }
     }
 }
