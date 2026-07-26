@@ -47,44 +47,50 @@ public class TelegramBot extends TelegramLongPollingBot {
 
     @Override
     public void onUpdateReceived(Update update) {
-        if (!update.hasMessage()) {
-            return;
+        try {
+            if (!update.hasMessage()) {
+                return;
+            }
+
+            Message message = update.getMessage();
+            if (message.hasContact()) {
+                handleContact(message);
+                return;
+            }
+
+            if (!message.hasText()) {
+                return;
+            }
+
+            String text = message.getText().trim();
+            Long chatId = message.getChatId();
+            Long senderId = message.getFrom() != null ? message.getFrom().getId() : null;
+
+            logger.info("Received message: '{}' from user: {} in chat: {}", text, senderId, chatId);
+
+            if ("/start".equalsIgnoreCase(text)) {
+                handleStart(chatId, senderId);
+                return;
+            }
+
+            if (senderId == null || !telegramUserService.isRegistered(senderId)) {
+                sendText(chatId, "Please press /start and share your contact first.", buildContactKeyboard());
+                return;
+            }
+
+            if (!text.matches("\\d+")) {
+                sendText(chatId, "Send the ATM number using digits only.");
+                return;
+            }
+
+            String response = atmService.findByNumber(text)
+                    .map(this::buildAtmResponse)
+                    .orElse("ATM with this code was not found");
+
+            sendText(chatId, response);
+        } catch (Exception e) {
+            logger.error("Error processing update", e);
         }
-
-        Message message = update.getMessage();
-        if (message.hasContact()) {
-            handleContact(message);
-            return;
-        }
-
-        if (!message.hasText()) {
-            return;
-        }
-
-        String text = message.getText().trim();
-        Long chatId = message.getChatId();
-        Long senderId = message.getFrom() != null ? message.getFrom().getId() : null;
-
-        if ("/start".equalsIgnoreCase(text)) {
-            handleStart(chatId, senderId);
-            return;
-        }
-
-        if (senderId == null || !telegramUserService.isRegistered(senderId)) {
-            sendText(chatId, "Please press /start and share your contact first.", buildContactKeyboard());
-            return;
-        }
-
-        if (!text.matches("\\d+")) {
-            sendText(chatId, "Send the ATM number using digits only.");
-            return;
-        }
-
-        String response = atmService.findByNumber(text)
-                .map(this::buildAtmResponse)
-                .orElse("ATM with this code was not found");
-
-        sendText(chatId, response);
     }
 
     public void sendBroadcast(Long chatId, String response) {
