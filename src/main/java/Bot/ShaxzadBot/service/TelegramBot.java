@@ -133,7 +133,7 @@ public class TelegramBot extends TelegramLongPollingBot {
             kitText.append("- ").append(item).append("\n");
         }
 
-        return   "🌍 Регион: " + atm.getRegion() +
+        return   "🌍 Регион: " + atm.getRegion() + "\n"+
                 "🏧 №ATM: " + atm.getNumber() + "\n" +
                 "🖥️ Модель: " + atm.getModel() + "\n" +
                 "🏢 Организация: " + atm.getOrganization() + "\n" +
