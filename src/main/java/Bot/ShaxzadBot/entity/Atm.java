@@ -25,15 +25,23 @@ public class Atm {
     @Column(name = "sector", nullable = false, length = 255)
     private String sector;
 
+    @Column(name = "region", nullable = false, length = 255)
+    private String region;
+
     protected Atm() {
     }
 
-    public Atm(String number, String model, String organization, String address, String sector) {
+    public Atm(String number, String model, String organization, String address, String sector, String region) {
         this.number = number;
         this.model = model;
         this.organization = organization;
         this.address = address;
         this.sector = sector;
+        this.region = region;
+    }
+
+    public Atm(String number, String model, String organization, String address, String sector) {
+        this(number, model, organization, address, sector, "Центр");
     }
 
     public String getNumber() {
@@ -54,5 +62,9 @@ public class Atm {
 
     public String getSector() {
         return sector;
+    }
+
+    public String getRegion() {
+        return region;
     }
 }
